@@ -1,0 +1,129 @@
+import pandas as pd
+import numpy as np
+import re
+import nltk
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from wordcloud import WordCloud
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, ConfusionMatrixDisplay
+import seaborn as sns
+import matplotlib.pyplot as plt
+from matplotlib import style
+
+# Download NLTK data
+nltk.download('punkt')
+nltk.download('wordnet')
+nltk.download('stopwords')
+
+data = {
+    'id': list(range(1, 31)),
+    'text': [
+        "I love everyone!",
+        "I hate you!",
+        "You are so stupid.",
+        "Let's spread love and kindness.",
+        "You're an idiot and a loser.",
+        "This is a beautiful day.",
+        "Go away, nobody likes you.",
+        "You are so intelligent and thoughtful.",
+        "Shut up, you moron!",
+        "I appreciate your hard work.",
+        "Keep up the great work!",
+        "You are a failure.",
+        "I despise everything about you.",
+        "Your work is fantastic!",
+        "Get lost, you're worthless.",
+        "I'm proud of your progress.",
+        "Stop being so dumb.",
+        "Your attitude is wonderful.",
+        "You disgust me.",
+        "You are very talented.",
+        "What a horrible thing to say.",
+        "You have a kind heart.",
+        "No one cares about you.",
+        "Your kindness is appreciated.",
+        "Why are you so annoying?",
+        "You're a great friend.",
+        "I can't stand you.",
+        "You have done an excellent job.",
+        "Nobody wants you here.",
+        "Your help was invaluable."
+    ],
+    'label': [0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0]  # 0: appropriate, 1: inappropriate
+}
+
+# Create a DataFrame
+df = pd.DataFrame(data)
+df.to_csv('sample_texts.csv', index=False)
+
+# Load the CSV file
+df = pd.read_csv('sample_texts.csv')
+print("Loaded Data:")
+print(df.head())
+
+# Preprocess the Text Data
+lemmatizer = WordNetLemmatizer()
+stop_words = set(stopwords.words('english'))
+
+def preprocess_text(text):
+    # Lowercase
+    text = text.lower()
+    # Remove punctuation
+    text = re.sub(r'[^\w\s]', '', text)
+    # Tokenize
+    words = word_tokenize(text)
+    # Remove stopwords and lemmatize
+    words = [lemmatizer.lemmatize(word) for word in words if word not in stop_words]
+    return ' '.join(words)
+
+df['cleaned_text'] = df['text'].apply(preprocess_text)
+print("Preprocessed Data:")
+print(df)
+
+# Feature Extraction using TF-IDF Vectorizer
+vectorizer = TfidfVectorizer()
+X = vectorizer.fit_transform(df['cleaned_text'])
+y = df['label']
+
+# Split data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Train a Logistic Regression model
+model = LogisticRegression()
+model.fit(X_train, y_train)
+
+# Make predictions
+y_pred = model.predict(X_test)
+
+# Evaluate the model
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Accuracy: {accuracy}')
+print(classification_report(y_test, y_pred))
+
+# Confusion Matrix
+cm = confusion_matrix(y_test, y_pred, labels=[0, 1])
+cmd = ConfusionMatrixDisplay(cm, display_labels=['Appropriate', 'Inappropriate'])
+cmd.plot()
+plt.show()
+
+# WordCloud for all text
+all_text = ' '.join(df['cleaned_text'])
+wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_text)
+
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud, interpolation='bilinear')
+plt.axis('off')
+plt.show()
+
+# WordCloud for inappropriate text
+inappropriate_text = ' '.join(df[df['label'] == 1]['cleaned_text'])
+wordcloud_inappropriate = WordCloud(width=800, height=400, background_color='white').generate(inappropriate_text)
+
+plt.figure(figsize=(10, 5))
+plt.imshow(wordcloud_inappropriate, interpolation='bilinear')
+plt.axis('off')
+plt.show()
